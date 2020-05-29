@@ -1,0 +1,7 @@
+---
+_prometheus_binary_install_dir: '/usr/local/bin'
+prometheus_system_group: "prometheus"
+prometheus_system_user: "{{ prometheus_system_group }}"
+prometheus_selinux_packages:
+  - libselinux-python
+  - policycoreutils-python

@@ -1,0 +1,82 @@
+---
+prometheus_version: 2.18.1
+prometheus_binary_local_dir: ''
+prometheus_skip_install: false
+
+prometheus_config_dir: /etc/prometheus
+prometheus_db_dir: /var/lib/prometheus
+
+prometheus_web_listen_address: "0.0.0.0:9090"
+prometheus_web_external_url: ""
+
+prometheus_storage_retention: "30d"
+prometheus_storage_retention_size: "0"
+
+# prometheus_alertmanager_config: []
+prometheus_alertmanager_config:
+  - scheme: http
+    static_configs:
+      - targets: ["127.0.0.1:9093"]
+
+prometheus_alert_relabel_configs: []
+# prometheus_alert_relabel_configs:
+#   - action: labeldrop
+#     regex: replica
+
+prometheus_global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+
+prometheus_remote_write: []
+# prometheus_remote_write:
+#   - url: http://{{ hostvars['influxdb']['ip'] }}:8086/api/v1/prom/write?u={{ influxdb_admin_user_name }}&p={{ influxdb_admin_user_password }}&db=opentsdb
+
+prometheus_remote_read: []
+# prometheus_remote_read:
+#   - url: http://{{ hostvars['influxdb']['ip'] }}:8086/api/v1/prom/read?u={{ influxdb_admin_user_name }}&p={{ influxdb_admin_user_password }}&db=opentsdb
+
+prometheus_external_labels:
+  environment: "{{ hostvars['prometheus']['ip'] }}"
+
+prometheus_targets:
+  node:
+    - targets:
+        - "{{ hostvars['node-exporter-1']['ip'] }}:9100"
+      labels:
+        env: "{{ hostvars['node-exporter-1']['inventory_hostname'] }}"
+    - targets:
+        - "{{ hostvars['node-exporter-2']['ip'] }}:9100"
+      labels:
+        env: "{{ hostvars['node-exporter-2']['inventory_hostname'] }}"
+
+prometheus_scrape_configs:
+  - job_name: "prometheus"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+          - "{{ hostvars['prometheus']['ip'] }}:9090"
+  - job_name: "node"
+    file_sd_configs:
+      - files:
+          - "{{ prometheus_config_dir }}/file_sd/node.yml"
+
+# Alternative config file name, searched in ansible templates path.
+prometheus_config_file: 'prometheus.yml.j2'
+
+prometheus_alert_rules_files:
+  - prometheus/rules/*.rules
+
+prometheus_static_targets_files:
+  - prometheus/targets/*.yml
+  - prometheus/targets/*.json
+
+prometheus_alert_rules:
+  - alert: InstanceDown
+    expr: 'up == 0'
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      description: '{% raw %}{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes.{% endraw %}'
+      summary: '{% raw %}Instance {{ $labels.instance }} down{% endraw %}'
